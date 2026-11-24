@@ -1,24 +1,20 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
+import { PersonScraper } from '../scrapers/PersonScraper';
 
-export const getPerson = async (req: Request, res: Response) => {
-  // Stubbed until actual LK21 actor scraper is possible
-  res.json({
-    success: true,
-    data: {
-      id: req.params.id,
-      name: "Unknown Actor",
-      photo: "",
-      birthDate: "",
-      birthPlace: "",
-      bio: "",
-      knownFor: [],
-      movies: [],
-      series: [],
-      awards: []
-    }
-  });
+const scraper = new PersonScraper();
+
+export const getPerson = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.json({ success: true, data: await scraper.getPerson(req.params.id) });
+  } catch (error) {
+    next(error);
+  }
 };
 
-export const getPopularActors = async (req: Request, res: Response) => {
-  res.json({ success: true, data: [] });
+export const getPopularActors = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.json({ success: true, data: await scraper.getPopularActors() });
+  } catch (error) {
+    next(error);
+  }
 };

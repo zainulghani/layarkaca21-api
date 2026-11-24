@@ -60,6 +60,30 @@ export class BaseScraper {
     return cfg;
   }
 
+  /** Fetch a JSON endpoint (e.g. the WordPress REST API) with the same headers/proxy. */
+  protected async fetchJson(endpoint: string): Promise<any> {
+    const isAbsolute = endpoint.startsWith('http');
+    const bases = isAbsolute ? [''] : this.baseUrls;
+    let lastError: any = null;
+
+    for (const base of bases) {
+      const url = isAbsolute ? endpoint : `${base}${endpoint}`;
+      const baseLabel = isAbsolute ? new URL(endpoint).origin : base;
+      try {
+        const response = await axios.get(url, this.buildAxiosConfig(url, baseLabel));
+        if (response.status >= 400) {
+          lastError = new Error(`Upstream LK21 error: ${response.status}`);
+          continue;
+        }
+        return response.data;
+      } catch (error: any) {
+        lastError = error;
+        logger.warn(`JSON fetch failed for ${url}: ${error?.message}`);
+      }
+    }
+    throw lastError || new Error('Upstream LK21 unreachable');
+  }
+
   protected async fetchHtml(endpoint: string): Promise<cheerio.CheerioAPI> {
     const isAbsolute = endpoint.startsWith('http');
     const bases = isAbsolute ? [''] : this.baseUrls;

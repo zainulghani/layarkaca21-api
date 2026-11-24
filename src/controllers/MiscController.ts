@@ -1,23 +1,42 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import axios from 'axios';
 import { prisma } from '../config/prisma';
 import { redis } from '../config/redis';
 import { config } from '../config/env';
+import { MiscScraper } from '../scrapers/MiscScraper';
 
-export const getTopBoxOffice = async (req: Request, res: Response) => {
-  res.json({ success: true, data: [] });
+const scraper = new MiscScraper();
+
+export const getTopBoxOffice = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.json({ success: true, data: await scraper.scrapeTopBoxOffice() });
+  } catch (error) {
+    next(error);
+  }
 };
 
-export const getComingSoon = async (req: Request, res: Response) => {
-  res.json({ success: true, data: [] });
+export const getComingSoon = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.json({ success: true, data: await scraper.scrapeComingSoon() });
+  } catch (error) {
+    next(error);
+  }
 };
 
-export const getNews = async (req: Request, res: Response) => {
-  res.json({ success: true, data: [] });
+export const getNews = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.json({ success: true, data: await scraper.scrapeNews() });
+  } catch (error) {
+    next(error);
+  }
 };
 
-export const getTrailers = async (req: Request, res: Response) => {
-  res.json({ success: true, data: [] });
+export const getTrailers = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.json({ success: true, data: await scraper.scrapeTrailers() });
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const getRecommendations = async (req: Request, res: Response) => {

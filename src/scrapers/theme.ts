@@ -94,7 +94,7 @@ export function parseGridCards($: cheerio.CheerioAPI, scope: cheerio.Cheerio<any
   const items: Card[] = [];
   const roots: any[] = [];
 
-  scope.find('article.widget-item').each((_: any, el: any) => {
+  scope.find('article.widget-item, article.mega-item').each((_: any, el: any) => {
     roots.push(el);
   });
 
@@ -109,8 +109,9 @@ export function parseGridCards($: cheerio.CheerioAPI, scope: cheerio.Cheerio<any
 
     const yearMatch = title.match(/\((\d{4})\)/);
     const genres: string[] = [];
-    card.find('.grid-categories a[href*="/genre/"]').each((_: any, a: any) => {
-      genres.push($(a).text().trim());
+    card.find('.grid-categories a[href*="/genre/"], .grid-categories a[href*="/tag/"]').each((_: any, a: any) => {
+      const label = $(a).text().trim();
+      if (label) genres.push(label);
     });
 
     items.push({

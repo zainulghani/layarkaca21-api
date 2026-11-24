@@ -1,4 +1,7 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
+import { CategoryScraper } from '../scrapers/CategoryScraper';
+
+const scraper = new CategoryScraper();
 
 export const getGenres = async (req: Request, res: Response) => {
   res.json({
@@ -28,11 +31,20 @@ export const getGenres = async (req: Request, res: Response) => {
   });
 };
 
-export const getMoviesByGenre = async (req: Request, res: Response) => {
-  res.json({
-    success: true,
-    page: 1,
-    total: 0,
-    data: []
-  });
+/** Legacy alias: /genre/:slug/movies -> same payload as /home/genre/:slug. */
+export const getMoviesByGenre = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { slug } = req.params;
+    const page = parseInt(req.query.page as string) || 1;
+    const data = await scraper.scrapeCategory(`genre/${slug}`, page);
+    res.json({
+      success: true,
+      page: data.page,
+      totalPages: data.totalPages,
+      total: data.items.length,
+      data: data.items
+    });
+  } catch (error) {
+    next(error);
+  }
 };
