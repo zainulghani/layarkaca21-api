@@ -1,10 +1,30 @@
 import { BaseScraper } from './BaseScraper';
 import * as cheerio from 'cheerio';
+import { parseCards, parseLoCards } from './theme';
+
+const SECTION_MAP: Array<{ key: string; patterns: RegExp[] }> = [
+  { key: 'filmUnggulan', patterns: [/film\s+unggulan/i, /^terpopuler$/i, /top\s+rating/i] },
+  { key: 'latestMovies', patterns: [/film\s+terbaru/i, /^upload\s+terbaru$/i] },
+  { key: 'latestSeries', patterns: [/series\s+unggulan/i, /series\s+terbaru/i] },
+  { key: 'seriesUpdate', patterns: [/series\s+update/i] },
+  { key: 'topMonth', patterns: [/top\s+bulan\s+ini/i] },
+  { key: 'recommendations', patterns: [/rekomendasi/i] },
+  { key: 'family', patterns: [/bareng\s+keluarga/i, /keluarga/i] },
+  { key: 'action', patterns: [/action\s+terbaru/i, /^action$/i] },
+  { key: 'drakor', patterns: [/drakor/i] },
+  { key: 'horror', patterns: [/horror\s+terbaru/i, /^horror$/i] },
+  { key: 'romance', patterns: [/romance\s+terbaru/i, /^romance$/i] },
+  { key: 'comedy', patterns: [/comedy\s+terbaru/i, /^comedy$/i] },
+  { key: 'korea', patterns: [/korea\s+terbaru/i, /^korea$/i] },
+  { key: 'thailand', patterns: [/thailand\s+terbaru/i, /^thailand$/i] },
+  { key: 'india', patterns: [/india\s+terbaru/i, /^india$/i] },
+];
 
 export class HomeScraper extends BaseScraper {
   async scrapeHome() {
     const $ = await this.fetchHtml('/');
-    
+    const base = this.baseUrl;
+
     const sections: any = {
       filmUnggulan: [],
       latestMovies: [],
@@ -23,60 +43,44 @@ export class HomeScraper extends BaseScraper {
       india: []
     };
 
-    $('.slider-wrapper').each((_, el) => {
-      const label = ($(el).attr('aria-label') || '').toLowerCase().trim();
-      const sliders = $(el).find('.sliders');
-      if (sliders.length === 0) return;
+    const loSections = $('section.lo-sek');
+    if (loSections.length > 0) {
+      loSections.each((_, el) => {
+        const sec = $(el);
+        const title = sec.find('.lo-sek-judul').first().text().trim();
+        const cards = parseLoCards($, sec, base).slice(0, 12);
+        if (!title || cards.length === 0) return;
+        const key = this.matchSection(title);
+        if (key && sections[key].length === 0) sections[key] = cards;
+      });
 
-      const cards = this.extractCards($, sliders).slice(0, 10);
+      // The hero rail ("lo-pita") holds the site's featured titles.
+      const hero = parseLoCards($, $('section.lo-pita').first(), base).slice(0, 12);
+      if (hero.length && sections.filmUnggulan.length === 0) sections.filmUnggulan = hero;
 
-      if (label.includes('film unggulan')) sections.filmUnggulan = cards;
-      else if (label.includes('film terbaru')) sections.latestMovies = cards;
-      else if (label.includes('series unggulan')) sections.latestSeries = cards;
-      else if (label.includes('series update')) sections.seriesUpdate = cards;
-      else if (label.includes('top bulan ini')) sections.topMonth = cards;
-      else if (label.includes('rekomendasi')) sections.recommendations = cards;
-      else if (label.includes('keluarga')) sections.family = cards;
-      else if (label.includes('action')) sections.action = cards;
-      else if (label.includes('drakor')) sections.drakor = cards;
-      else if (label.includes('horror')) sections.horror = cards;
-      else if (label.includes('romance')) sections.romance = cards;
-      else if (label.includes('comedy')) sections.comedy = cards;
-      else if (label.includes('korea')) sections.korea = cards;
-      else if (label.includes('thailand')) sections.thailand = cards;
-      else if (label.includes('india')) sections.india = cards;
+      return sections;
+    }
+
+    // Legacy "grid-poster" theme: each row is a titled section.
+    const rows = $('div.row');
+    rows.each((_, el) => {
+      const row = $(el);
+      const header = row.find('header').first();
+      if (header.length === 0) return;
+      const title = header.find('h2').first().text().trim();
+      const cards = parseCards($, row, base).slice(0, 12);
+      if (!title || cards.length === 0) return;
+      const key = this.matchSection(title);
+      if (key && sections[key].length === 0) sections[key] = cards;
     });
 
     return sections;
   }
 
-  private extractCards($: cheerio.CheerioAPI, container: cheerio.Cheerio<cheerio.AnyNode>) {
-    const items: any[] = [];
-    container.find('li').each((_: any, el: any) => {
-      const link = $(el).find('a').attr('href');
-      const title = $(el).find('.poster-title').text().trim() || $(el).find('h2, .title').text().trim();
-      const img = $(el).find('img');
-      const poster = img.attr('src') || img.attr('data-src') || img.attr('data-lazy-src') || img.attr('data-original') || '';
-      const ratingRaw = $(el).find('.rating, .imdb').text().trim();
-      
-      if (link && title && !link.includes('/genre') && !link.includes('/country') && !link.includes('/year')) {
-        const id = link.split('/').filter(Boolean).pop() || '';
-        const yearRaw = $(el).find('.year').text().trim();
-        const duration = $(el).find('.duration').text().trim() || null;
-        const genre = $(el).find('meta[itemprop="genre"]').attr('content') || $(el).find('.genre').text().trim() || null;
-        items.push({ 
-          id, 
-          slug: id,
-          type: link.includes('series') ? 'series' : 'movie', 
-          title, 
-          year: parseInt(yearRaw, 10) || null, 
-          poster, 
-          rating: parseFloat(ratingRaw) || null,
-          duration,
-          genre
-        });
-      }
-    });
-    return items;
+  private matchSection(title: string): string | null {
+    for (const entry of SECTION_MAP) {
+      if (entry.patterns.some((p) => p.test(title))) return entry.key;
+    }
+    return null;
   }
 }

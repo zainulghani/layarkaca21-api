@@ -6,9 +6,17 @@ const scraper = new CategoryScraper();
 // Handles genre, country, year
 export const getCategoryMovies = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    let { category, slug } = req.params; // category can be 'genre', 'country', 'years'
+    let { category, slug } = req.params as any; // category can be 'genre', 'country', 'years'
     const page = parseInt(req.query.page as string) || 1;
-    
+
+    // Routes are declared as '/home/genre/:slug', so the category segment is part of
+    // the path, not a named param. Recover it from the matched route.
+    if (!category) {
+      const matched = String(req.route?.path || req.path || '');
+      const m = matched.match(/\/(genre|country|years|year)\//);
+      category = m ? m[1] : '';
+    }
+
     // LK21 uses 'year' not 'years'
     if (category === 'years') category = 'year';
     

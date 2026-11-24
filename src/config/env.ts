@@ -6,8 +6,8 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env.local') });
 export const config = {
   port: process.env.PORT || 3000,
   redisUrl: process.env.REDIS_URL || '',
-  lk21BaseUrl: (process.env.LK21_BASE_URLS || process.env.LK21_BASE_URL || 'https://tv12.lk21official.cc').split(',')[0].trim().replace(/\/$/, ''),
-  lk21BaseUrls: (process.env.LK21_BASE_URLS || process.env.LK21_BASE_URL || 'https://tv12.lk21official.cc')
+  lk21BaseUrl: (process.env.LK21_BASE_URLS || process.env.LK21_BASE_URL || 'https://lk21official.fun').split(',')[0].trim().replace(/\/$/, ''),
+  lk21BaseUrls: (process.env.LK21_BASE_URLS || process.env.LK21_BASE_URL || 'https://lk21official.fun,https://lk21official.cloud')
     .split(',')
     .map((s) => s.trim().replace(/\/$/, ''))
     .filter(Boolean),

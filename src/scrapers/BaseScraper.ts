@@ -87,16 +87,23 @@ export class BaseScraper {
         const finalUrl = response.request?.res?.responseUrl || '';
         if (finalUrl) {
           const finalPath = new URL(finalUrl).pathname;
-          const requestedPath = isAbsolute ? new URL(endpoint).pathname : endpoint;
-          if (finalPath === '/' && requestedPath !== '/' && requestedPath !== '') {
+          const requestedPath = isAbsolute ? new URL(endpoint).pathname : endpoint.split('?')[0];
+          const isSearch = /[?&]s=/.test(endpoint) || /\?/.test(requestedPath);
+          if (finalPath === '/' && requestedPath !== '/' && requestedPath !== '' && !isSearch) {
             throw new PageNotFoundError();
           }
         }
 
         const $ = cheerio.load(response.data);
 
+        const hasNativeContent =
+          $('.lo-kartu').length > 0 ||
+          $('.grid-poster').length > 0 ||
+          $('script[type="application/ld+json"]').length > 0 ||
+          $('.lo-h1').length > 0;
+
         const redirectBtn = $('a:contains("Buka Sekarang"), a:contains("Nontondrama")');
-        if (redirectBtn.length > 0 && redirectBtn.attr('href')) {
+        if (!hasNativeContent && redirectBtn.length > 0 && redirectBtn.attr('href')) {
           const targetUrl = redirectBtn.attr('href') as string;
           logger.info(`Following redirect to ${targetUrl}`);
           const targetResponse = await axios.get(targetUrl, this.buildAxiosConfig(targetUrl, baseLabel));
@@ -104,8 +111,9 @@ export class BaseScraper {
           const targetFinalUrl = targetResponse.request?.res?.responseUrl || '';
           if (targetFinalUrl) {
             const finalPath = new URL(targetFinalUrl).pathname;
-            const requestedPath = isAbsolute ? new URL(endpoint).pathname : endpoint;
-            if (finalPath === '/' && requestedPath !== '/' && requestedPath !== '') {
+            const requestedPath = isAbsolute ? new URL(endpoint).pathname : endpoint.split('?')[0];
+            const isSearch = /[?&]s=/.test(endpoint);
+            if (finalPath === '/' && requestedPath !== '/' && requestedPath !== '' && !isSearch) {
               throw new PageNotFoundError();
             }
           }
@@ -172,7 +180,37 @@ export class BaseScraper {
 
   public async fetchExtraDetails(id: string) {
     try {
-      const $ = await this.fetchHtml(`/${id}`);
+      const endpoint = id.startsWith('/') ? id : `/${id}`;
+      const $ = await this.fetchHtml(endpoint);
+
+      // `lo-*` theme (lk21official.fun and friends)
+      if ($('.lo-h1, .lo-sinopsis-teks, .lo-meta-baris').length > 0) {
+        const synopsis = $('.lo-sinopsis-teks').first().text().trim();
+        const metaItems = $('.lo-meta-item').toArray().map((e: any) => $(e).text().trim());
+        const pick = (re: RegExp) => metaItems.find((t: string) => re.test(t)) || '';
+        let sutradara = $('.lo-direksi, .lo-sutradara').first().text().trim().replace(/^[^:]*:\s*/, '');
+        let bintangFilm = $('.lo-cast').first().text().trim().replace(/^[^:]*:\s*/, '');
+        let negara = '';
+        $('.lo-chip-baris .lo-chip').each((_: any, el: any) => {
+          const href = $(el).attr('href') || '';
+          if (!negara && /\/country\//.test(href)) negara = $(el).text().trim();
+        });
+        if (!negara) negara = pick(/[A-Z][a-z]+$/);
+        const release = pick(/^\d{4}$/);
+        const updated = $('.lo-diperbarui, time[datetime]').first().attr('datetime') || pick(/diperbarui/i);
+        const votes = $('.lo-rating-jumlah').first().text().trim();
+        return {
+          synopsis,
+          subtitle: pick(/^subtitle$/i) || '',
+          sutradara,
+          bintangFilm,
+          negara,
+          release,
+          updated,
+          votes
+        };
+      }
+
       const synopsis = $('div.synopsis.collapsed').text().trim();
       let sutradara = '';
       let bintangFilm = '';

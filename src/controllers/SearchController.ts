@@ -9,11 +9,13 @@ export const search = async (req: Request, res: Response, next: NextFunction) =>
     if (!q || typeof q !== 'string') {
       return res.status(400).json({ success: false, error: 'Query parameter q is required' });
     }
-    const results = await scraper.search(q);
+    const page = parseInt(req.query.page as string) || 1;
+    const { results, totalPages } = await scraper.search(q, page);
     res.json({
       success: true,
       query: q,
-      page: 1,
+      page,
+      totalPages,
       total: results.length,
       results
     });
