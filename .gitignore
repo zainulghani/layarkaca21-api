@@ -4,3 +4,6 @@ dist/
 .env.local
 *.log
 logs/
+proxy.env
+tunnel-url.txt
+bin/
