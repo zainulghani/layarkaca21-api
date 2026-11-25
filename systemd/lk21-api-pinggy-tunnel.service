@@ -1,0 +1,16 @@
+[Unit]
+Description=Pinggy fallback tunnel for LK21 catalog API
+After=network-online.target lk21-api.service
+Wants=network-online.target lk21-api.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/hatch/apps/lk21-api
+ExecStart=/home/hatch/apps/lk21-api/tunnel-start.sh
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/hatch/apps/lk21-api/tunnel.log
+StandardError=append:/home/hatch/apps/lk21-api/tunnel.log
+
+[Install]
+WantedBy=multi-user.target

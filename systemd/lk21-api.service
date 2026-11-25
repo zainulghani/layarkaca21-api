@@ -1,0 +1,23 @@
+[Unit]
+Description=Layarkaca21 Catalog API (lk21-catalog-api)
+After=network.target postgresql@16-main.service redis-lk21.service
+Wants=postgresql@16-main.service redis-lk21.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/hatch/apps/lk21-api
+EnvironmentFile=/home/hatch/apps/lk21-api/proxy.env
+Environment=NODE_ENV=production
+Environment=PORT=3110
+Environment=DATABASE_URL=postgresql://lk21:lk21_dev_pw_2026@127.0.0.1:5432/lk21?schema=public
+Environment=DIRECT_URL=postgresql://lk21:lk21_dev_pw_2026@127.0.0.1:5432/lk21?schema=public
+Environment=REDIS_URL=redis://127.0.0.1:6379
+Environment=LK21_BASE_URLS=https://lk21official.fun,https://lk21official.cloud
+ExecStart=/usr/bin/node dist/server.js
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/hatch/apps/lk21-api/logs/service.log
+StandardError=append:/home/hatch/apps/lk21-api/logs/service.log
+
+[Install]
+WantedBy=multi-user.target

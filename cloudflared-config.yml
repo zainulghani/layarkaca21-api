@@ -1,0 +1,11 @@
+# Named Cloudflare tunnel for the LK21 catalog API.
+# protocol http2 is REQUIRED in this sandbox: QUIC/UDP is blocked.
+# Run it through 9router-pro/cloudflare/run-tunnel.sh, which provides the
+# stub DNS server + socat relays that make the CF edge reachable.
+protocol: http2
+tunnel: b63a9b9d-b6c5-4bf7-abbe-5e4a568fa372
+credentials-file: /home/hatch/apps/lk21-api/cloudflared-credentials.json
+ingress:
+  - hostname: api.zainulghani.biz.id
+    service: http://127.0.0.1:3110
+  - service: http_status:404

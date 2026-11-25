@@ -1,0 +1,16 @@
+[Unit]
+Description=Cloudflare named tunnel for LK21 catalog API (api.zainulghani.biz.id)
+After=network-online.target lk21-api.service
+Wants=network-online.target lk21-api.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/hatch/workspace/9router-pro/cloudflare
+ExecStart=/home/hatch/workspace/9router-pro/cloudflare/run-tunnel.sh tunnel --no-autoupdate --config /home/hatch/apps/lk21-api/cloudflared-config.yml run
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/hatch/apps/lk21-api/logs/cf-tunnel.log
+StandardError=append:/home/hatch/apps/lk21-api/logs/cf-tunnel.log
+
+[Install]
+WantedBy=multi-user.target
