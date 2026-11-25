@@ -5,13 +5,17 @@ const HomeController_1 = require("../controllers/HomeController");
 const SearchController_1 = require("../controllers/SearchController");
 const MovieController_1 = require("../controllers/MovieController");
 const SeriesController_1 = require("../controllers/SeriesController");
+const EpisodeController_1 = require("../controllers/EpisodeController");
 const PersonController_1 = require("../controllers/PersonController");
+const ActorController_1 = require("../controllers/ActorController");
 const GenreController_1 = require("../controllers/GenreController");
 const NavigationController_1 = require("../controllers/NavigationController");
 const CategoryController_1 = require("../controllers/CategoryController");
 const MiscController_1 = require("../controllers/MiscController");
 const cache_1 = require("../middlewares/cache");
+const CronController_1 = require("../controllers/CronController");
 const router = (0, express_1.Router)();
+router.get('/cron', CronController_1.runCron);
 router.get('/home', HomeController_1.getHome);
 router.get('/home/film-unggulan', HomeController_1.getFilmUnggulan);
 router.get('/home/latest-movies', HomeController_1.getLatestMovies);
@@ -34,8 +38,11 @@ router.get('/movie/:id/cast', (0, cache_1.cache)(86400), MovieController_1.getMo
 router.get('/series/:id', (0, cache_1.cache)(86400), SeriesController_1.getSeries);
 router.get('/series/:id/seasons', (0, cache_1.cache)(86400), SeriesController_1.getSeriesSeasons);
 router.get('/series/:id/episodes', (0, cache_1.cache)(86400), SeriesController_1.getSeriesEpisodes);
+router.get('/episode/:id', (0, cache_1.cache)(3600), EpisodeController_1.getEpisode);
 router.get('/person/:id', (0, cache_1.cache)(86400), PersonController_1.getPerson);
 router.get('/actors/popular', (0, cache_1.cache)(86400), PersonController_1.getPopularActors);
+router.get('/actors/crawl', ActorController_1.crawlCredits);
+router.get('/actors/stats', ActorController_1.getCreditStats);
 // Navigation & Menus
 router.get('/home/navigation', (0, cache_1.cache)(86400), NavigationController_1.getAllNavigation);
 router.get('/home/genre', (0, cache_1.cache)(86400), NavigationController_1.getGenres);
@@ -56,4 +63,5 @@ router.get('/coming-soon', (0, cache_1.cache)(3600), MiscController_1.getComingS
 router.get('/news', (0, cache_1.cache)(3600), MiscController_1.getNews);
 router.get('/trailers', (0, cache_1.cache)(3600), MiscController_1.getTrailers);
 router.get('/health', MiscController_1.getHealth);
+router.get('/debug/upstream', MiscController_1.getDebugUpstream);
 exports.default = router;

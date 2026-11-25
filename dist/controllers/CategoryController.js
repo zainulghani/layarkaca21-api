@@ -8,6 +8,13 @@ const getCategoryMovies = async (req, res, next) => {
     try {
         let { category, slug } = req.params; // category can be 'genre', 'country', 'years'
         const page = parseInt(req.query.page) || 1;
+        // Routes are declared as '/home/genre/:slug', so the category segment is part of
+        // the path, not a named param. Recover it from the matched route.
+        if (!category) {
+            const matched = String(req.route?.path || req.path || '');
+            const m = matched.match(/\/(genre|country|years|year)\//);
+            category = m ? m[1] : '';
+        }
         // LK21 uses 'year' not 'years'
         if (category === 'years')
             category = 'year';

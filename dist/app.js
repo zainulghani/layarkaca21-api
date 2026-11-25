@@ -10,14 +10,26 @@ const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const swagger_1 = require("./config/swagger");
 const routes_1 = __importDefault(require("./routes"));
 const error_1 = require("./middlewares/error");
+const sanitizer_1 = require("./middlewares/sanitizer");
 const app = (0, express_1.default)();
-app.use((0, helmet_1.default)());
+app.use((0, helmet_1.default)({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false
+}));
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
+app.use(sanitizer_1.sanitizeResponse);
 app.get('/', (req, res) => {
     res.redirect('/api-docs');
 });
-app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.swaggerSpec));
+const swaggerOptions = {
+    customCssUrl: 'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.3/swagger-ui.min.css',
+    customJs: [
+        'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.3/swagger-ui-bundle.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.3/swagger-ui-standalone-preset.js'
+    ]
+};
+app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_1.swaggerSpec, swaggerOptions));
 app.use('/api', routes_1.default);
 app.use('/', routes_1.default);
 app.use('*', (req, res) => {

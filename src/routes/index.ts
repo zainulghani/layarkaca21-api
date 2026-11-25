@@ -22,6 +22,7 @@ import { getMovie, getMovieCast } from '../controllers/MovieController';
 import { getSeries, getSeriesSeasons, getSeriesEpisodes } from '../controllers/SeriesController';
 import { getEpisode } from '../controllers/EpisodeController';
 import { getPerson, getPopularActors } from '../controllers/PersonController';
+import { crawlCredits, getCreditStats } from '../controllers/ActorController';
 import { getMoviesByGenre } from '../controllers/GenreController';
 import { 
   getCountries, 
@@ -70,6 +71,8 @@ router.get('/episode/:id', cache(3600), getEpisode);
 
 router.get('/person/:id', cache(86400), getPerson);
 router.get('/actors/popular', cache(86400), getPopularActors);
+router.get('/actors/crawl', crawlCredits);
+router.get('/actors/stats', getCreditStats);
 
 // Navigation & Menus
 router.get('/home/navigation', cache(86400), getAllNavigation);

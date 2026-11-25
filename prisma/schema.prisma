@@ -109,7 +109,42 @@ model Studio {
 }
 
 model Tag {
-  id     String  @id @default(uuid())
-  name   String  @unique
+  id     String @id @default(uuid())
+  name   String @unique
   movies Movie[]
+}
+
+// Credit of a person (actor / director) on a title.
+//
+// The upstream catalogue has no person pages on every theme, so credits are
+// harvested from the JSON-LD `actor` array of the detail pages and from the
+// `muvicast` taxonomy of the grid theme. They are stored here so the person
+// endpoints stay fast and keep working for titles that are no longer listed
+// on the front page.
+model ActorCredit {
+  id         String   @id @default(uuid())
+  personSlug String
+  personName String
+  titleSlug  String
+  title      String
+  type       String // movie | series
+  year       Int?
+  poster     String?
+  rating     Float?
+  url        String?
+  source     String // jsonld | muvicast
+  createdAt  DateTime @default(now())
+
+  @@unique([personSlug, titleSlug, type])
+  @@index([personSlug])
+  @@index([titleSlug])
+  @@index([type])
+}
+
+// Cursor of the incremental credit crawler.
+model CrawlState {
+  id        String   @id @default(uuid())
+  label     String   @unique
+  cursor    Int      @default(1)
+  updatedAt DateTime @updatedAt
 }

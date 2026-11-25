@@ -1,99 +1,43 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MovieScraper = void 0;
-const BaseScraper_1 = require("./BaseScraper");
-class MovieScraper extends BaseScraper_1.BaseScraper {
+const DetailScraper_1 = require("./DetailScraper");
+class MovieScraper extends DetailScraper_1.DetailScraper {
     async scrapeDetail(slug) {
-        const $ = await this.fetchHtml(`/${slug}`);
-        const title = this.extractText($, 'body', ['h1[itemprop="name"]', 'h1.title', '.movie-title h1', 'h1']);
-        const extra = await this.fetchExtraDetails(slug);
-        let jsonLdData = {};
-        try {
-            const scripts = $('script[type="application/ld+json"]').get();
-            for (const script of scripts) {
-                const json = JSON.parse($(script).text());
-                if (json['@type'] === 'Movie' || json['@type'] === 'TVSeries') {
-                    jsonLdData = json;
-                    break;
-                }
-            }
-        }
-        catch (e) { }
-        const runtime = this.extractText($, 'body', ['.duration', 'span[itemprop="duration"]']) || null;
-        const isSeries = (jsonLdData['@type'] === 'TVSeries') || (runtime && (runtime.startsWith('S.') || runtime.toLowerCase().includes('episode')));
-        if (isSeries) {
+        // Movies live at /{slug}/; on the `lo-*` theme a series lives at /series/{slug}/,
+        // so fall back to that path when the plain slug does not resolve.
+        const detail = await this.loadDetail([`/${slug}/`, `/series/${slug}/`]);
+        if (!detail)
+            throw new Error('Movie not found');
+        if (detail.json['@type'] === 'TVSeries') {
             const { SeriesScraper } = require('./SeriesScraper');
-            const seriesScraper = new SeriesScraper();
-            return seriesScraper.scrapeDetail(slug);
+            return new SeriesScraper().scrapeDetail(slug);
         }
-        // Extract fields with JSON-LD prioritization
-        const description = jsonLdData.description || this.extractText($, 'body', ['div[itemprop="description"]', '.synopsis', '.description p']) || extra.synopsis;
-        const poster = jsonLdData.image || this.extractAttr($, 'body', ['.movie-info img', '.detail.hidden img', '.poster img', 'img[itemprop="image"]', '.movie-poster img'], 'src');
-        const ratingRaw = this.extractText($, 'body', ['span[itemprop="ratingValue"]', '.imdb-rating', '.rating-value']);
-        const rating = jsonLdData.aggregateRating?.ratingValue ? parseFloat(jsonLdData.aggregateRating.ratingValue) : (parseFloat(ratingRaw) || null);
-        const yearRaw = this.extractText($, 'body', ['.year a', 'a[href*="/year/"]']);
-        const year = jsonLdData.datePublished ? new Date(jsonLdData.datePublished).getFullYear() : (parseInt(yearRaw, 10) || null);
-        let genres = [];
-        if (jsonLdData.genre) {
-            if (Array.isArray(jsonLdData.genre)) {
-                genres = jsonLdData.genre;
-            }
-            else if (typeof jsonLdData.genre === 'string') {
-                genres = jsonLdData.genre.split(',').map((s) => s.trim());
-            }
-        }
-        else {
-            $('div.content h2, div.detail.hidden p').each((_, el) => {
-                if ($(el).text().includes('Genre')) {
-                    $(el).parent().find('a[href*="/genre/"]').each((_, a) => { genres.push($(a).text().trim()); });
-                }
-            });
-        }
-        let countries = [];
-        if (extra.negara) {
-            countries.push(extra.negara);
-        }
-        else {
-            $('div.content h2, div.detail.hidden p').each((_, el) => {
-                if ($(el).text().includes('Negara')) {
-                    $(el).parent().find('a[href*="/country/"], a[href*="/negara/"]').each((_, a) => { countries.push($(a).text().trim()); });
-                }
-            });
-        }
-        const cast = Array.isArray(jsonLdData.actor)
-            ? jsonLdData.actor.map((a) => a.name)
-            : (extra.bintangFilm ? extra.bintangFilm.split(',').map((s) => s.trim()).filter(Boolean) : []);
-        const crew = Array.isArray(jsonLdData.director)
-            ? jsonLdData.director.map((d) => ({ name: d.name, role: 'Director' }))
-            : (extra.sutradara ? [{ name: extra.sutradara, role: 'Director' }] : []);
+        const d = this.buildDetail(detail.$, detail.json);
         const response = {
             id: slug,
-            slug: slug,
-            title,
-            originalTitle: title,
-            description,
-            year,
-            rating,
-            runtime,
+            slug,
+            title: d.title,
+            originalTitle: d.originalTitle,
+            description: d.description,
+            year: d.year,
+            rating: d.rating,
+            runtime: d.runtime,
             status: 'released',
-            poster,
-            backdrop: poster,
-            trailer: this.extractTrailer($),
-            genres,
-            countries,
-            cast,
-            crew
+            poster: d.poster,
+            backdrop: d.backdrop,
+            trailer: d.trailer,
+            genres: d.genres,
+            countries: d.countries,
+            cast: d.cast,
+            crew: d.crew,
+            streamembed: d.streamembed,
+            instructions: "Jika video tidak bisa diputar atau muncul error, coba langkah berikut:\n\nKlik tombol GANTI PLAYER di bawah player untuk pilih sumber pemutar lain.\nJika masih error, tekan tombol Refresh di browser atau tekan F5.\nHapus cache/perbarui halaman dengan Ctrl+F5 (Windows) atau Cmd+Shift+R (macOS).\nPastikan koneksi internet stabil — coba turunkan kualitas pemutaran jika tersedia.\nJika suara bermasalah, klik GANTI PLAYER untuk beralih ke player lain dengan kualitas lebih bagus."
         };
-        const finalVotes = jsonLdData.aggregateRating?.ratingCount ? String(jsonLdData.aggregateRating.ratingCount) : extra.votes;
-        const finalRelease = jsonLdData.datePublished || extra.release;
-        if (extra.subtitle)
-            response.subtitle = extra.subtitle;
-        if (finalVotes)
-            response.votes = finalVotes;
-        if (finalRelease)
-            response.releaseDate = finalRelease;
-        if (extra.updated)
-            response.updatedAt = extra.updated;
+        if (d.votes)
+            response.votes = d.votes;
+        if (d.releaseDate)
+            response.releaseDate = d.releaseDate;
         return response;
     }
 }

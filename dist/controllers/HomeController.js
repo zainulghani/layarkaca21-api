@@ -9,7 +9,7 @@ const appendExtraDetails = async (items) => {
     for (let i = 0; i < items.length; i += chunkSize) {
         const chunk = items.slice(i, i + chunkSize);
         await Promise.all(chunk.map(async (item) => {
-            const extra = await scraper.fetchExtraDetails(item.id);
+            const extra = await scraper.fetchExtraDetails(item.path || item.id);
             Object.assign(item, extra);
         }));
     }

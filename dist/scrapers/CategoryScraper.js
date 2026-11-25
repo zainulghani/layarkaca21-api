@@ -2,61 +2,41 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CategoryScraper = void 0;
 const BaseScraper_1 = require("./BaseScraper");
+const theme_1 = require("./theme");
+const logger_1 = require("../config/logger");
 class CategoryScraper extends BaseScraper_1.BaseScraper {
     async scrapeCategory(path, page = 1) {
-        // Determine the url to fetch based on the path. 
-        // Examples of path: 'populer', 'komen-terbanyak', 'genre/action', 'country/indonesia', 'year/2023'
+        // path examples: 'populer', 'rating', 'release', 'latest', 'series-terbaru',
+        // 'genre/action', 'country/korea', 'year/2025'
         const endpoint = page > 1 ? `/${path}/page/${page}/` : `/${path}/`;
         try {
             const $ = await this.fetchHtml(endpoint);
-            const items = [];
-            $('article, .item').each((_, el) => {
-                const link = $(el).find('a').attr('href');
-                const title = $(el).find('h2, .title, .poster-title').text().trim();
-                if (link && title && link !== '#' && !title.includes('Kawanfilm')) {
-                    const id = link.split('/').filter(Boolean).pop() || '';
-                    const img = $(el).find('img');
-                    const poster = img.attr('src') || img.attr('data-src') || img.attr('data-lazy-src') || img.attr('data-original') || '';
-                    const ratingRaw = $(el).find('.rating, .imdb').text().trim();
-                    const yearRaw = $(el).find('.year').text().trim();
-                    const duration = $(el).find('.duration').text().trim() || null;
-                    const genre = $(el).find('meta[itemprop="genre"]').attr('content') || $(el).find('.genre').text().trim() || null;
-                    if (id) {
-                        items.push({
-                            id,
-                            slug: id,
-                            title,
-                            year: parseInt(yearRaw, 10) || null,
-                            poster,
-                            rating: parseFloat(ratingRaw) || null,
-                            duration,
-                            genre,
-                            type: link.includes('series') ? 'series' : 'movie'
-                        });
-                    }
+            let totalPages = (0, theme_1.parseTotalPages)($);
+            // The theme reports "dari 1" on the first page even when more pages exist,
+            // so read the real total from page 2 when that happens.
+            if (page === 1 && totalPages <= 1 && (0, theme_1.parseHasNextPage)($)) {
+                try {
+                    const second = await this.fetchHtml(`/${path}/page/2/`);
+                    const secondTotal = (0, theme_1.parseTotalPages)(second);
+                    if (secondTotal > 1)
+                        totalPages = secondTotal;
                 }
-            });
-            // Pagination info
-            const pagination = $('.pagination');
-            let totalPages = 1;
-            if (pagination.length > 0) {
-                const lastPageLink = pagination.find('a.last').attr('href') || pagination.find('a.page-numbers:not(.next)').last().attr('href');
-                if (lastPageLink) {
-                    const match = lastPageLink.match(/\/page\/(\d+)/);
-                    if (match) {
-                        totalPages = parseInt(match[1], 10);
-                    }
+                catch {
+                    /* keep the fallback total */
                 }
             }
-            // Fetch extra details in chunks to avoid overwhelming the server
-            const chunkSize = 6;
-            for (let i = 0; i < items.length; i += chunkSize) {
-                const chunk = items.slice(i, i + chunkSize);
-                await Promise.all(chunk.map(async (item) => {
-                    const extra = await this.fetchExtraDetails(item.id);
-                    Object.assign(item, extra);
-                }));
-            }
+            const items = (0, theme_1.parseCards)($, $.root(), this.baseUrl).map((c) => ({
+                id: c.id,
+                slug: c.slug,
+                title: c.title,
+                year: c.year,
+                poster: c.poster,
+                rating: c.rating,
+                duration: c.duration,
+                genre: c.genre,
+                type: c.type,
+                url: c.url
+            }));
             return {
                 page,
                 totalPages,
@@ -64,7 +44,8 @@ class CategoryScraper extends BaseScraper_1.BaseScraper {
             };
         }
         catch (error) {
-            // If 404, it might mean no more pages
+            logger_1.logger.error(`Category scrape failed for ${endpoint}: ${error?.message}`, error?.status);
+            // A page beyond the last one is not an error for the caller.
             return { page, totalPages: page, items: [] };
         }
     }

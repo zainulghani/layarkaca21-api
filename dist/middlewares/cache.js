@@ -8,6 +8,9 @@ const cache = (durationInSeconds) => {
         if (req.method !== 'GET') {
             return next();
         }
+        if (!redis_1.redis || redis_1.redis.status === 'disabled') {
+            return next();
+        }
         const key = `__express__${req.originalUrl || req.url}`;
         try {
             const cachedResponse = await redis_1.redis.get(key);

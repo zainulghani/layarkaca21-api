@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getMoviesByGenre = exports.getGenres = void 0;
+const CategoryScraper_1 = require("../scrapers/CategoryScraper");
+const scraper = new CategoryScraper_1.CategoryScraper();
 const getGenres = async (req, res) => {
     res.json({
         success: true,
@@ -29,12 +31,22 @@ const getGenres = async (req, res) => {
     });
 };
 exports.getGenres = getGenres;
-const getMoviesByGenre = async (req, res) => {
-    res.json({
-        success: true,
-        page: 1,
-        total: 0,
-        data: []
-    });
+/** Legacy alias: /genre/:slug/movies -> same payload as /home/genre/:slug. */
+const getMoviesByGenre = async (req, res, next) => {
+    try {
+        const { slug } = req.params;
+        const page = parseInt(req.query.page) || 1;
+        const data = await scraper.scrapeCategory(`genre/${slug}`, page);
+        res.json({
+            success: true,
+            page: data.page,
+            totalPages: data.totalPages,
+            total: data.items.length,
+            data: data.items
+        });
+    }
+    catch (error) {
+        next(error);
+    }
 };
 exports.getMoviesByGenre = getMoviesByGenre;
