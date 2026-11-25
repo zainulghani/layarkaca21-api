@@ -17,7 +17,16 @@ UNITS=$APP/systemd
 LOG=$APP/logs/bootstrap.log
 
 mkdir -p "$APP/logs" /var/lib/redis
-exec >>"$LOG" 2>&1
+
+# Keep the log bounded: the cron runs every 30 minutes for the life of the
+# deployment, so the file would otherwise grow without limit.
+if [ -f "$LOG" ] && [ "$(stat -c %s "$LOG")" -gt 1048576 ]; then
+  tail -n 500 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
+fi
+
+# Tee everything into the log file *and* stdout, so a cron run shows its
+# progress in the scheduler output instead of silently redirecting it away.
+exec > >(tee -a "$LOG") 2>&1
 echo "=== bootstrap $(date -u +%FT%TZ) ==="
 
 # --- packages (rootfs may have been rolled back) ---------------------------
@@ -65,7 +74,10 @@ fi
 
 # --- redis ----------------------------------------------------------------
 systemctl enable redis-lk21 >/dev/null 2>&1
-systemctl restart redis-lk21 >/dev/null 2>&1
+if ! systemctl is-active --quiet redis-lk21; then
+  systemctl restart redis-lk21 >/dev/null 2>&1
+  echo "[redis] started redis-lk21"
+fi
 for _ in $(seq 1 15); do
   redis-cli ping 2>/dev/null | grep -q PONG && break
   sleep 1
@@ -80,12 +92,23 @@ if [ -d "$APP/node_modules/.prisma/client" ]; then
 fi
 
 # --- app + tunnels --------------------------------------------------------
-systemctl enable lk21-api >/dev/null 2>&1
-systemctl restart lk21-api >/dev/null 2>&1
-systemctl enable lk21-api-cf-tunnel >/dev/null 2>&1
-systemctl restart lk21-api-cf-tunnel >/dev/null 2>&1
-systemctl enable lk21-api-pinggy-tunnel >/dev/null 2>&1
-systemctl restart lk21-api-pinggy-tunnel >/dev/null 2>&1
+# Only (re)start what is not already running. The cron fires every 30 minutes;
+# unconditionally restarting the API would reset its uptime and throw away the
+# warm Redis cache on every tick.
+ensure_service() {
+  local unit=$1
+  systemctl enable "$unit" >/dev/null 2>&1
+  if systemctl is-active --quiet "$unit"; then
+    echo "[svc] $unit already active"
+  else
+    systemctl restart "$unit" >/dev/null 2>&1
+    echo "[svc] restarted $unit"
+  fi
+}
+
+ensure_service lk21-api
+ensure_service lk21-api-cf-tunnel
+ensure_service lk21-api-pinggy-tunnel
 
 # --- health ---------------------------------------------------------------
 sleep 6
