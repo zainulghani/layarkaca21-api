@@ -74,6 +74,7 @@ echo "[redis] $(redis-cli ping 2>&1)"
 
 # --- prisma schema --------------------------------------------------------
 if [ -d "$APP/node_modules/.prisma/client" ]; then
+  (cd "$APP" && PGPASSWORD=lk21_dev_pw_2026 npx prisma generate >/dev/null 2>&1)
   (cd "$APP" && PGPASSWORD=lk21_dev_pw_2026 npx prisma db push --skip-generate >/dev/null 2>&1)
   echo "[prisma] schema pushed"
 fi
