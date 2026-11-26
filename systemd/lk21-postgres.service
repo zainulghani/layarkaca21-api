@@ -1,0 +1,25 @@
+[Unit]
+Description=LK21 catalog API PostgreSQL (persistent data directory)
+After=network.target
+AssertPathExists=/home/hatch/apps/lk21-api/pgdata/PG_VERSION
+
+[Service]
+Type=forking
+User=postgres
+Group=postgres
+PIDFile=/home/hatch/apps/lk21-api/pgdata/postmaster.pid
+ExecStart=/home/hatch/apps/lk21-api/scripts/postgres.sh start
+ExecStop=/home/hatch/apps/lk21-api/scripts/postgres.sh stop
+ExecReload=/home/hatch/apps/lk21-api/scripts/postgres.sh restart
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=60
+TimeoutStopSec=30
+# The data directory lives on the persistent /home mount, so the cluster
+# survives the rootfs rollback that wipes /var/lib/postgresql.
+ProtectSystem=false
+ProtectHome=false
+PrivateTmp=false
+
+[Install]
+WantedBy=multi-user.target

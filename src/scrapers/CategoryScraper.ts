@@ -3,6 +3,19 @@ import { parseCards, parseHasNextPage, parseTotalPages } from './theme';
 import { logger } from '../config/logger';
 
 export class CategoryScraper extends BaseScraper {
+  /**
+   * Root categories that the upstream theme actually publishes. A request for
+   * anything else is a client error, not an empty result.
+   */
+  static readonly ROOT_CATEGORIES = [
+    'latest',
+    'populer',
+    'rating',
+    'release',
+    'series-terbaru',
+    'abjad'
+  ];
+
   async scrapeCategory(path: string, page: number = 1) {
     // path examples: 'populer', 'rating', 'release', 'latest', 'series-terbaru',
     // 'genre/action', 'country/korea', 'year/2025'

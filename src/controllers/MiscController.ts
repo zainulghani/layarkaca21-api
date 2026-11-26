@@ -55,12 +55,16 @@ export const getHealth = async (req: Request, res: Response) => {
     if (redis.status === 'ready') cacheStatus = 'connected';
   } catch (e) {}
 
-  res.json({
-    success: true,
+  const payload = {
     status: 'healthy',
     database: dbStatus,
     cache: cacheStatus,
     uptime: process.uptime()
+  };
+  res.json({
+    success: true,
+    ...payload,
+    data: payload
   });
 };
 

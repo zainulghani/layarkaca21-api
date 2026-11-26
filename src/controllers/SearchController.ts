@@ -17,7 +17,10 @@ export const search = async (req: Request, res: Response, next: NextFunction) =>
       page,
       totalPages,
       total: results.length,
-      results
+      results,
+      // Mirror of the payload under `data`, so clients that expect the same
+      // envelope as the other endpoints can read one shape everywhere.
+      data: { query: q, page, totalPages, total: results.length, results }
     });
   } catch (error) {
     next(error);
