@@ -4,8 +4,9 @@ import { logger } from '../config/logger';
 
 export class CategoryScraper extends BaseScraper {
   /**
-   * Root categories that the upstream theme actually publishes. A request for
-   * anything else is a client error, not an empty result.
+   * Root categories that the upstream theme publishes as plain top-level
+   * lists. Used by the API to tell a client that a slug is not a category at
+   * all, rather than silently returning an empty page.
    */
   static readonly ROOT_CATEGORIES = [
     'latest',
@@ -57,6 +58,10 @@ export class CategoryScraper extends BaseScraper {
       };
     } catch (error: any) {
       logger.error(`Category scrape failed for ${endpoint}: ${error?.message}`, error?.status);
+      // A 404 means the category does not exist upstream. Propagate it so the
+      // client gets a 404 instead of an empty list that looks like a valid
+      // category with no titles.
+      if (error?.status === 404) throw error;
       // A page beyond the last one is not an error for the caller.
       return { page, totalPages: page, items: [] };
     }
