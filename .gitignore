@@ -9,3 +9,4 @@ tunnel-url.txt
 bin/
 tunnel-token.txt
 cloudflared-credentials.json
+pgdata/
